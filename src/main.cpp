@@ -1,5 +1,5 @@
-#define DEVICE_VERSION "1.2.3"
-#define DEVICE_NAME "MDtronix WaterTank"
+#define DEVICE_VERSION "1.2.4"
+#define DEVICE_NAME "MDtronix WaterTank test"
 #define DEVICE_MANUFACTURER "MDtronix Lab"
 #define DEVICE_MODEL "WaterTank Controller: v4.1"
 
@@ -9,6 +9,18 @@
 #define BROKER_ADDR IPAddress(192, 168, 1, 100)
 #define BROKER_USER "hassio"
 #define BROKER_PASS "darkmaster"
+
+#define pump_name "Pump_test"
+#define mode_name "Mode_test"
+#define distance_name "Distance_test"
+#define level_name "Level _test"
+
+int Distance;
+int Value;
+bool Mode;
+bool Pump;
+String Command;
+byte mac[WL_MAC_ADDR_LENGTH];
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -20,12 +32,6 @@ HASensor value("Level");
 HASensor distance("Distance");
 HASensor mode("Mode");
 HASensor sensor_error("System");
-
-int Distance;
-int Value;
-bool Mode;
-bool Pump;
-String Command;
 
 void pump_action(bool state, HASwitch *s)
 {
@@ -40,7 +46,6 @@ void set_state()
 
 void set_device()
 {
-  byte mac[WL_MAC_ADDR_LENGTH];
   WiFi.macAddress(mac);
   device.setUniqueId(mac, sizeof(mac)); // Unique ID must be set!
   device.setName(DEVICE_NAME);
@@ -50,15 +55,15 @@ void set_device()
   device.enableSharedAvailability();
   device.enableLastWill();
   pump.onStateChanged(pump_action); // handle switch state
-  pump.setName("Pump");
+  pump.setName(pump_name);
   pump.setIcon("mdi:water");
-  value.setName("Water Level");
+  value.setName(level_name);
   value.setIcon("mdi:waves");
   value.setUnitOfMeasurement("%");
-  distance.setName("Distance");
+  distance.setName(distance_name);
   distance.setIcon("mdi:ruler");
   distance.setUnitOfMeasurement("cm");
-  mode.setName("Mode");
+  mode.setName(mode_name);
   mode.setIcon("mdi:nintendo-switch");
   sensor_error.setName("WaterTank Sensor");
 }
@@ -130,6 +135,8 @@ void setup()
   Serial.println("Connected to the network");
   set_device();
   mqtt.begin(BROKER_ADDR, BROKER_USER, BROKER_PASS);
+  Serial.println(device.getUniqueId());
+  Serial.println(pump.getName());
 }
 
 void loop()
