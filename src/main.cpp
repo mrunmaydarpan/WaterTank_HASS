@@ -13,7 +13,8 @@
 #define pump_name "Pump_test"
 #define mode_name "Mode_test"
 #define distance_name "Distance_test"
-#define level_name "Level _test"
+#define level_name "Level_test"
+#define SensorError_name "WaterTank Sensor_test"
 
 int Distance;
 int Value;
@@ -65,7 +66,7 @@ void set_device()
   distance.setUnitOfMeasurement("cm");
   mode.setName(mode_name);
   mode.setIcon("mdi:nintendo-switch");
-  sensor_error.setName("WaterTank Sensor");
+  sensor_error.setName(SensorError_name);
 }
 
 void parseCommand(String com)
