@@ -2,7 +2,8 @@
 #define DEVICE_MANUFACTURER "MDtronix Lab"
 #define DEVICE_MODEL "WaterTank Controller: v4.1"
 
-#define test_mode false
+#define test_mode true
+#define debug_mode false
 
 #if test_mode
 #define STATIC_IP false
@@ -112,7 +113,9 @@ void set_device()
   mode.setName(mode_name);
   mode.setIcon("mdi:nintendo-switch");
   sensor_error.setName(SensorError_name);
+#if debug_mode
   Serial.println(pump.getName());
+#endif
 }
 
 void sendData()
@@ -269,8 +272,10 @@ void setup()
   wifiManager.autoConnect(ssid.c_str());
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ssid);
+#if debug_mode
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
+#endif
   setting_code();
   set_device();
   mqtt.begin(BROKER_ADDR, BROKER_USER, BROKER_PASS);
