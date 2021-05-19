@@ -1,4 +1,4 @@
-#define DEVICE_VERSION "1.2.6"
+#define DEVICE_VERSION "1.2.7"
 #define DEVICE_MANUFACTURER "MDtronix Lab"
 #define DEVICE_MODEL "WaterTank Controller: v4.1"
 
@@ -14,6 +14,7 @@
 #include <ArduinoHA.h>
 #include <ESPAsyncWiFiManager.h>
 #include <Timer.h>
+#include <ESP8266HTTPUpdateServer.h>
 
 #define BROKER_ADDR IPAddress(192, 168, 1, 100)
 #define BROKER_USER "hassio"
@@ -49,9 +50,12 @@ const char *min_ = "min";
 const char *max_ = "max";
 const char *thres_ = "threshold";
 int get_min(0), get_max(0), get_threshold(0);
+const byte DNS_PORT = 53;
+IPAddress apIP(8, 8, 4, 4); // The default android DNS
 
 AsyncWebServer server(80);
 DNSServer dns;
+ESP8266HTTPUpdateServer httpUpdater;
 
 WiFiClient client;
 HADevice device;
@@ -61,6 +65,8 @@ HASensor value("Level");
 HASensor distance("Distance");
 HASensor mode("Mode");
 HASensor sensor_error("System");
+HABinarySensor pump_binary("pump_binary", false);
+
 Timer t;
 
 const char index_html[] PROGMEM = R"rawliteral(
@@ -113,6 +119,7 @@ void set_device()
   mode.setName(mode_name);
   mode.setIcon("mdi:nintendo-switch");
   sensor_error.setName(SensorError_name);
+  pump_binary.setName(pump_name);
 #if debug_mode
   Serial.println(pump.getName());
 #endif
@@ -134,6 +141,7 @@ void parseCommand(String com)
     {
       int i = part2.toInt();
       pump.setState(i);
+      pump_binary.setState(i);
       Pump = i;
     }
     if (part1.equals("$Level"))
@@ -196,9 +204,8 @@ void getData()
 
 void setting_code()
 {
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/html", index_html, processor); });
-
+  server.onNotFound([](AsyncWebServerRequest *request)
+                    { request->send_P(200, "text/html", index_html, processor); });
   server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request)
             {
               int min;
@@ -236,6 +243,8 @@ void setting_code()
               sprintf(data, "min: %d\nmax: %d\nstart at: %d\n", get_min, get_max, get_threshold);
               request->send(200, "text/plain", String(data));
             });
+  dns.start(DNS_PORT, "*", IPAddress(WiFi.softAPIP()));
+  httpUpdater.setup(&http_server);
   server.begin();
 }
 
@@ -262,7 +271,7 @@ void setup()
   wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
 #endif
 #if test_mode
-  String ssid = "MDtronix-WaterTank-test";
+  String ssid = "MDtronix-WaterTank-test-";
   ssid += String(ESP.getChipId()).c_str();
 #else
   String ssid = "MDtronix-WaterTank-";
@@ -286,6 +295,7 @@ void setup()
 
 void loop()
 {
+  dns.processNextRequest();
   mqtt.loop();
   getData();
   t.update();
