@@ -1,4 +1,4 @@
-#define DEVICE_VERSION "1.2.7"
+#define DEVICE_VERSION "1.3.0"
 #define DEVICE_MANUFACTURER "MDtronix Lab"
 #define DEVICE_MODEL "WaterTank Controller: v4.1"
 
@@ -14,7 +14,7 @@
 #include <ArduinoHA.h>
 #include <ESPAsyncWiFiManager.h>
 #include <Timer.h>
-#include <ESP8266HTTPUpdateServer.h>
+#include <UpdateHandle.h>
 
 #define BROKER_ADDR IPAddress(192, 168, 1, 100)
 #define BROKER_USER "hassio"
@@ -51,11 +51,9 @@ const char *max_ = "max";
 const char *thres_ = "threshold";
 int get_min(0), get_max(0), get_threshold(0);
 const byte DNS_PORT = 53;
-IPAddress apIP(8, 8, 4, 4); // The default android DNS
 
 AsyncWebServer server(80);
 DNSServer dns;
-ESP8266HTTPUpdateServer httpUpdater;
 
 WiFiClient client;
 HADevice device;
@@ -243,8 +241,15 @@ void setting_code()
               sprintf(data, "min: %d\nmax: %d\nstart at: %d\n", get_min, get_max, get_threshold);
               request->send(200, "text/plain", String(data));
             });
+  server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request)
+            { handleUpdate(request); });
+  server.on(
+      "/doUpdate", HTTP_POST,
+      [](AsyncWebServerRequest *request) {},
+      [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
+         size_t len, bool final)
+      { handleDoUpdate(request, filename, index, data, len, final); });
   dns.start(DNS_PORT, "*", IPAddress(WiFi.softAPIP()));
-  httpUpdater.setup(&http_server);
   server.begin();
 }
 
