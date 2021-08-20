@@ -14,7 +14,6 @@
 #include <ArduinoHA.h>
 #include <ESPAsyncWiFiManager.h>
 #include <Timer.h>
-#include <UpdateHandle.h>
 
 #define BROKER_ADDR IPAddress(192, 168, 1, 100)
 #define BROKER_USER "hassio"
@@ -241,14 +240,6 @@ void setting_code()
               sprintf(data, "min: %d\nmax: %d\nstart at: %d\n", get_min, get_max, get_threshold);
               request->send(200, "text/plain", String(data));
             });
-  server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request)
-            { handleUpdate(request); });
-  server.on(
-      "/doUpdate", HTTP_POST,
-      [](AsyncWebServerRequest *request) {},
-      [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
-         size_t len, bool final)
-      { handleDoUpdate(request, filename, index, data, len, final); });
   dns.start(DNS_PORT, "*", IPAddress(WiFi.softAPIP()));
   server.begin();
 }
