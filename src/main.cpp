@@ -2,14 +2,8 @@
 #define DEVICE_MANUFACTURER "MDtronix Lab"
 #define DEVICE_MODEL "WaterTank Controller: v4.1"
 
-#define test_mode true
-#define debug_mode false
-
-#if test_mode
-#define STATIC_IP false
-#else
-#define STATIC_IP true
-#endif
+#define test_mode false
+#define debug_mode true
 
 #include <ArduinoHA.h>
 #include <ESPAsyncWiFiManager.h>
@@ -33,12 +27,6 @@
 #define distance_name "WaterTank Distance"
 #define level_name "WaterTank Level"
 #define SensorError_name "WaterTank Sensor"
-#endif
-
-#if STATIC_IP
-IPAddress _ip = IPAddress(192, 168, 1, 106);
-IPAddress _gw = IPAddress(192, 168, 1, 1);
-IPAddress _sn = IPAddress(255, 255, 255, 0);
 #endif
 
 int Distance, Value;
@@ -263,9 +251,6 @@ void setup()
   AsyncWiFiManager wifiManager(&server, &dns);
   wifiManager.setTimeout(150);
   wifiManager.setConfigPortalTimeout(120);
-#if STATIC_IP
-  wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
-#endif
 #if test_mode
   String ssid = "MDtronix-WaterTank-test-";
   ssid += String(ESP.getChipId()).c_str();
@@ -273,8 +258,7 @@ void setup()
   String ssid = "MDtronix-WaterTank-";
   ssid += String(ESP.getChipId()).c_str();
 #endif
-
-  wifiManager.autoConnect(ssid.c_str());
+  wifiManager.autoConnect(ssid.c_str(), "12345678");
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ssid);
 #if debug_mode
