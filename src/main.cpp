@@ -6,7 +6,7 @@
 #define debug_mode true
 
 #include <ArduinoHA.h>
-#include <ESPAsyncWiFiManager.h>
+#include <WiFiManager.h>
 #include <Timer.h>
 
 #define BROKER_ADDR IPAddress(192, 168, 1, 100)
@@ -33,14 +33,6 @@ int Distance, Value;
 bool Mode, Pump, MQTT;
 String Command;
 byte mac[WL_MAC_ADDR_LENGTH];
-const char *min_ = "min";
-const char *max_ = "max";
-const char *thres_ = "threshold";
-int get_min(0), get_max(0), get_threshold(0);
-const byte DNS_PORT = 53;
-
-AsyncWebServer server(80);
-DNSServer dns;
 
 WiFiClient client;
 HADevice device;
@@ -50,32 +42,8 @@ HASensor value("Level");
 HASensor distance("Distance");
 HASensor mode("Mode");
 HASensor sensor_error("System");
-HABinarySensor pump_binary("pump_binary", false);
 
 Timer t;
-
-const char index_html[] PROGMEM = R"rawliteral(
-<!DOCTYPE HTML><html><head><title>WaterTank Setting</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-</head><body>
-    <form action="/set">
-        <br><br>
-        %setvalue%
-        <br><br>
-        <input type="submit" value="Save">
-    </form>
-</body></html>)rawliteral";
-
-String processor(const String &var)
-{
-  if (var == "setvalue")
-  {
-    String sendValue = "";
-    sendValue += "Min: <input type=\"text\" name=\"min\" value=" + String(get_min) + "><br><br>Max: <input type=\"text\" name=\"max\" value=" + String(get_max) + "><br><br>Start at: <input type=\"text\" name=\"threshold\" value=" + String(get_threshold) + " > ";
-    return sendValue;
-  }
-  return String();
-}
 
 void pump_action(bool state, HASwitch *s)
 {
@@ -104,7 +72,6 @@ void set_device()
   mode.setName(mode_name);
   mode.setIcon("mdi:nintendo-switch");
   sensor_error.setName(SensorError_name);
-  pump_binary.setName(pump_name);
 #if debug_mode
   Serial.println(pump.getName());
 #endif
@@ -126,7 +93,6 @@ void parseCommand(String com)
     {
       int i = part2.toInt();
       pump.setState(i);
-      pump_binary.setState(i);
       Pump = i;
     }
     if (part1.equals("$Level"))
@@ -152,21 +118,6 @@ void parseCommand(String com)
       int8_t i = part2.toInt();
       sensor_error.setValue(i ? "Error" : "Ok");
     }
-    if (part1.equals("$minDistance"))
-    {
-      int i = part2.toInt();
-      get_min = i;
-    }
-    if (part1.equals("$maxDistance"))
-    {
-      int i = part2.toInt();
-      get_max = i;
-    }
-    if (part1.equals("$startAt"))
-    {
-      int i = part2.toInt();
-      get_threshold = i;
-    }
   }
 }
 
@@ -187,51 +138,6 @@ void getData()
   }
 }
 
-void setting_code()
-{
-  server.onNotFound([](AsyncWebServerRequest *request)
-                    { request->send_P(200, "text/html", index_html, processor); });
-  server.on("/set", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-              int min;
-              int max;
-              int threshold;
-              String message;
-              if (request->hasParam(min_) && request->hasParam(max_) && request->hasParam(thres_))
-              {
-                min = request->getParam(min_)->value().toInt();
-                max = request->getParam(max_)->value().toInt();
-                threshold = request->getParam(thres_)->value().toInt();
-
-                Serial.printf("$minDistance:%d\n", min ? min : get_min);
-                Serial.printf("$maxDistance:%d\n", max ? max : get_max);
-                Serial.printf("$startAt:%d\n", threshold ? threshold : get_threshold);
-
-                message = "min: ";
-                message += String(min) + '\n';
-                message += "max: ";
-                message += String(max) + '\n';
-                message += "start at: ";
-                message += String(threshold);
-              }
-              else
-              {
-                message = "No message sent";
-              }
-              Serial.println("$readSetting:1");
-              request->send(200, "text/plain", message);
-            });
-  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-              Serial.println("$readSetting:1");
-              char data[32];
-              sprintf(data, "min: %d\nmax: %d\nstart at: %d\n", get_min, get_max, get_threshold);
-              request->send(200, "text/plain", String(data));
-            });
-  dns.start(DNS_PORT, "*", IPAddress(WiFi.softAPIP()));
-  server.begin();
-}
-
 void on_mqtt_success()
 {
   Serial.println("$wifi:1");
@@ -248,9 +154,8 @@ void setup()
 {
   delay(1000);
   Serial.begin(9600);
-  AsyncWiFiManager wifiManager(&server, &dns);
+  WiFiManager wifiManager;
   wifiManager.setTimeout(150);
-  wifiManager.setConfigPortalTimeout(120);
 #if test_mode
   String ssid = "MDtronix-WaterTank-test-";
   ssid += String(ESP.getChipId()).c_str();
@@ -259,13 +164,7 @@ void setup()
   ssid += String(ESP.getChipId()).c_str();
 #endif
   wifiManager.autoConnect(ssid.c_str(), "12345678");
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(ssid);
-#if debug_mode
-  Serial.print("AP IP: ");
-  Serial.println(WiFi.softAPIP());
-#endif
-  setting_code();
+  Serial.println("connected");
   set_device();
   mqtt.begin(BROKER_ADDR, BROKER_USER, BROKER_PASS);
   mqtt.onConnected(on_mqtt_success);
@@ -275,7 +174,6 @@ void setup()
 
 void loop()
 {
-  dns.processNextRequest();
   mqtt.loop();
   getData();
   t.update();
