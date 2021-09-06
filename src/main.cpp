@@ -9,7 +9,7 @@
 #include <WiFiManager.h>
 #include <Timer.h>
 
-#define BROKER_ADDR IPAddress(192, 168, 1, 100)
+#define BROKER_ADDR IPAddress(192, 168, 225, 149)
 #define BROKER_USER "hassio"
 #define BROKER_PASS "darkmaster"
 
